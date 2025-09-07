@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Step Profit Bot</title>
+  <style>
+    :root{
+      --bg:#0b0f17;
+      --card:#0f1624;
+      --muted:#a7b0c0;
+      --primary:#19ff8c; /* neon green */
+      --danger:#ff3366;  /* neon red */
+      --accent:#00e5ff;  /* cyan */
+      --ring: 0 0 0 2px rgba(25,255,140,.25), 0 0 30px rgba(25,255,140,.15);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: radial-gradient(1200px 600px at 10% -10%, rgba(0,229,255,.08), transparent 60%),
+                  radial-gradient(1000px 500px at 90% 0%, rgba(255,51,102,.08), transparent 60%),
+                  var(--bg);
+      color:#e6efff; min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:24px;
+    }
+    .wrap{ width: min(1100px, 100%); display:grid; gap:16px; grid-template-columns: 1.1fr .9fr; }
+    @media (max-width: 980px){ .wrap{ grid-template-columns: 1fr; } }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.00));
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:18px; padding:18px;
+      box-shadow: 0 10px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.03);
+    }
+    h1{ margin:0 0 4px; font-size: clamp(20px, 2.6vw, 30px); letter-spacing:.3px }
+    .sub{ color:var(--muted); font-size:13px; margin-bottom:14px }
+
+    .row{ display:grid; grid-template-columns: 1fr 1fr; gap:14px }
+    .row3{ display:grid; grid-template-columns: repeat(3,1fr); gap:12px }
+    @media (max-width: 560px){ .row, .row3{ grid-template-columns:1fr } }
+
+    .field{ display:flex; flex-direction:column; gap:8px }
+    .label{ font-size:12px; color:#c7d2e3; letter-spacing:.2px }
+    .input, select, .slider{ 
+      width:100%; padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.08);
+      background:#0c1320; color:#e6efff; outline:none; transition:.2s;
+    }
+    .input:focus, select:focus{ box-shadow: var(--ring); border-color: rgba(25,255,140,.5); }
+    .slider{ -webkit-appearance:none; height:40px; position:relative; padding:0 }
+    .slider::-webkit-slider-runnable-track{ height:6px; background: linear-gradient(90deg, rgba(25,255,140,.5), rgba(0,229,255,.5)); border-radius:999px }
+    .slider::-webkit-slider-thumb{
+      -webkit-appearance:none; width:22px; height:22px; border-radius:50%; margin-top:-8px; background: var(--primary);
+      box-shadow: 0 0 0 4px rgba(25,255,140,.25), 0 6px 14px rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.25)
+    }
+
+    .btn{ padding:12px 14px; border-radius:14px; border:1px solid rgba(255,255,255,.1); cursor:pointer; font-weight:600; letter-spacing:.2px }
+    .btn-primary{ background: linear-gradient(180deg, rgba(25,255,140,.18), rgba(25,255,140,.1)); color:var(--primary) }
+    .btn-danger{ background: linear-gradient(180deg, rgba(255,51,102,.16), rgba(255,51,102,.08)); color:var(--danger) }
+    .btn:hover{ filter: brightness(1.08) }
+
+    .pill{ display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.06); background:#0c1320; font-size:12px; color:#cfe9ff }
+
+    .stat{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px }
+    .stat .k{ font-size:12px; color:#a8b3c7 }
+    .stat .v{ font-weight:700 }
+
+    table{ width:100%; border-collapse: collapse; margin-top:10px; font-size:14px }
+    th, td{ padding:10px 12px; border-bottom:1px dashed rgba(255,255,255,.06); text-align:right }
+    th:first-child, td:first-child{ text-align:left }
+    th{ color:#9fb1c8; font-weight:600; }
+
+    .hint{ font-size:12px; color:#a7b0c0; margin-top:8px }
+    .ok{ color:var(--primary) }
+    .warn{ color:var(--danger) }
+    .foot{ display:flex; gap:12px; flex-wrap:wrap; margin-top:14px }
+    .tag{ padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.06); font-size:12px; color:#b8c7dc }
+
+    .glow{ position:relative }
+    .glow:before{ content:""; position:absolute; inset:-1px; border-radius:18px; background: radial-gradient(600px 80px at 10% 0%, rgba(25,255,140,.12), transparent 60%); pointer-events:none }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="card glow">
+      <h1>Step Profit Bot – Planner</h1>
+      <div class="sub">প্রতি স্টেপে <span class="ok">1.9×</span> payout (যেমন ৳10 → ৳19, profit ৳9)। আপনার amount ও steps ঠিক করে মোট প্রফিট প্ল্যান দেখুন।</div>
+
+      <div class="row">
+        <div class="field">
+          <label class="label">Starting Balance (ঐচ্ছিক)</label>
+          <input id="balance" class="input" type="number" min="0" step="1" placeholder="যেমন: 1000" />
+          <div class="hint">দিলে গাইড জানাবে সর্বোচ্চ কয়টি স্টেপ একসাথে নিতে পারবেন।</div>
+        </div>
+        <div class="field">
+          <label class="label">Mode</label>
+          <select id="mode" class="input">
+            <option value="sequential">Sequential (একটার পর একটা ট্রেড)</option>
+            <option value="parallel">Parallel (একসাথে বহু ট্রেড)</option>
+          </select>
+          <div class="hint">Sequential এ একই stake বারবার ব্যবহার হয়। Parallel এ প্রতিটি স্টেপে নতুন stake লাগে।</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label class="label">Amount per Step (৳)</label>
+          <input id="amount" class="input" type="number" min="1" step="1" value="10" />
+          <input id="amountSlider" class="slider" type="range" min="1" max="1000" step="1" value="10" />
+          <div class="hint">পেআউট গণনা: payout = amount × 1.9, profit = amount × 0.9</div>
+        </div>
+        <div class="field">
+          <label class="label">Steps</label>
+          <input id="steps" class="input" type="number" min="1" step="1" value="3" />
+          <input id="stepsSlider" class="slider" type="range" min="1" max="50" step="1" value="3" />
+          <div id="guide" class="hint"></div>
+        </div>
+      </div>
+
+      <div class="row3">
+        <div class="pill">Per-step Payout: <b id="payoutPer">৳19.00</b></div>
+        <div class="pill">Per-step Profit: <b id="profitPer">৳9.00</b></div>
+        <div class="pill">Total Profit: <b id="profitTotal">৳27.00</b></div>
+      </div>
+
+      <div class="stat">
+        <div>
+          <div class="k">Capital Required</div>
+          <div class="v" id="capitalReq">৳10</div>
+        </div>
+        <div>
+          <div class="k">Projected Final Balance</div>
+          <div class="v" id="finalBal">—</div>
+        </div>
+      </div>
+
+      <div class="foot">
+        <button class="btn btn-primary" id="copyPlan">Copy Plan</button>
+        <button class="btn btn-danger" id="resetAll">Reset</button>
+        <span class="tag">Neon UI</span>
+        <span class="tag">1.9× model</span>
+        <span class="tag">Bangla labels</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h1>Step-by-Step Breakdown</h1>
+      <div class="sub">প্রতিটি স্টেপে কী রিটার্ন আসবে, টেবিলে দেখুন।</div>
+      <div style="overflow:auto">
+        <table id="table">
+          <thead>
+            <tr>
+              <th>Step</th>
+              <th>Stake (৳)</th>
+              <th>Payout (৳)</th>
+              <th>Profit (৳)</th>
+              <th>Cumulative Profit (৳)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="hint">নোট: এখানে সব স্টেপ জিতে যাবে ধরে নেওয়া হয়েছে (win-only projection)।</div>
+    </section>
+  </div>
+
+  <script>
+    const el = id => document.getElementById(id);
+    const nf = x => `৳${Number(x).toFixed(2)}`;
+
+    const amount = el('amount');
+    const amountSlider = el('amountSlider');
+    const steps = el('steps');
+    const stepsSlider = el('stepsSlider');
+    const balance = el('balance');
+    const mode = el('mode');
+
+    const payoutPer = el('payoutPer');
+    const profitPer = el('profitPer');
+    const profitTotal = el('profitTotal');
+    const capitalReq = el('capitalReq');
+    const finalBal = el('finalBal');
+    const guide = el('guide');
+
+    const tbody = document.querySelector('#table tbody');
+
+    function sync(a, b){
+      a.addEventListener('input', () => { b.value = a.value; compute(); });
+      b.addEventListener('input', () => { a.value = b.value; compute(); });
+    }
+    sync(amount, amountSlider);
+    sync(steps, stepsSlider);
+
+    [balance, mode].forEach(x => x.addEventListener('input', compute));
+
+    function compute(){
+      const A = Math.max(1, Number(amount.value) || 1);
+      const N = Math.max(1, Math.floor(Number(steps.value) || 1));
+      amount.value = A; amountSlider.value = A;
+      steps.value = N; stepsSlider.value = N;
+
+      const payout = A * 1.9; // total returned per step
+      const profit = A * 0.9; // net profit per step
+
+      payoutPer.textContent = nf(payout);
+      profitPer.textContent  = nf(profit);
+      profitTotal.textContent = nf(profit * N);
+
+      // Guidance & capital requirement
+      const bal = Number(balance.value);
+      const isSeq = mode.value === 'sequential';
+
+      let capReq = isSeq ? A : A * N; // sequential reuses stake
+      capitalReq.textContent = nf(capReq);
+
+      // Final balance (projection) if starting balance is provided
+      if(!isNaN(bal) && bal > 0){
+        const canAfford = Math.floor(bal / A);
+        const projFinal = bal + profit * N; // profit adds up over steps
+        finalBal.textContent = nf(projFinal);
+
+        if(isSeq){
+          if(bal >= A){
+            guide.innerHTML = `<span class="ok">Sequential:</span> আপনার ব্যালান্স যথেষ্ট। আপনি ইচ্ছামতো স্টেপ নিতে পারেন (সময়/রিস্ক অনুযায়ী)।`;
+          } else {
+            guide.innerHTML = `<span class="warn">Sequential:</span> কমপক্ষে ${nf(A)} লাগবে। আপনার ব্যালান্স কম।`;
+          }
+        } else {
+          // parallel
+          const maxSteps = Math.max(0, canAfford);
+          if(maxSteps === 0){
+            guide.innerHTML = `<span class="warn">Parallel:</span> ${nf(A)} প্রতি স্টেপ। আপনার ব্যালান্সে কোনো স্টেপ নেওয়া যাবে না।`;
+          } else {
+            guide.innerHTML = `<span class="ok">Parallel:</span> সর্বোচ্চ <b>${maxSteps}</b> স্টেপ একসাথে নিতে পারবেন (বর্তমানে নির্বাচিত: <b>${N}</b>).`;
+          }
+        }
+      } else {
+        finalBal.textContent = '—';
+        guide.textContent = 'স্টার্টিং ব্যালান্স দিলে আরও নির্ভুল গাইড দেখাবে।';
+      }
+
+      // Table rows
+      tbody.innerHTML = '';
+      let cum = 0;
+      for(let i=1;i<=N;i++){
+        cum += profit;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="text-align:left">${i}</td>
+          <td>${nf(A)}</td>
+          <td>${nf(payout)}</td>
+          <td>${nf(profit)}</td>
+          <td>${nf(cum)}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    compute();
+
+    // Copy plan
+    el('copyPlan').addEventListener('click', () => {
+      const A = Number(amount.value);
+      const N = Number(steps.value);
+      const bal = Number(balance.value);
+      const isSeq = mode.value === 'sequential';
+      const profit = A * 0.9;
+      const payout = A * 1.9;
+      const capReq = isSeq ? A : A * N;
+      const proj = isNaN(bal) || bal <= 0 ? null : (bal + profit * N);
+
+      let text = `Step Profit Bot Plan\n`+
+                 `Amount per Step: ৳${A}\n`+
+                 `Steps: ${N}\n`+
+                 `Mode: ${isSeq ? 'Sequential' : 'Parallel'}\n`+
+                 `Per-step Payout: ৳${payout.toFixed(2)}\n`+
+                 `Per-step Profit: ৳${profit.toFixed(2)}\n`+
+                 `Total Profit: ৳${(profit*N).toFixed(2)}\n`+
+                 `Capital Required: ৳${capReq.toFixed(2)}\n`+
+                 (proj ? `Projected Final Balance: ৳${proj.toFixed(2)}\n` : '')+
+                 `\nBreakdown:`;
+      for(let i=1;i<=N;i++){
+        text += `\nStep ${i}: Stake ৳${A}, Payout ৳${payout.toFixed(2)}, Profit ৳${profit.toFixed(2)}`;
+      }
+
+      navigator.clipboard.writeText(text).then(()=>{
+        const btn = document.getElementById('copyPlan');
+        const prev = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(()=> btn.textContent = prev, 1200);
+      });
+    });
+
+    // Reset
+    el('resetAll').addEventListener('click', () => {
+      balance.value = '';
+      mode.value = 'sequential';
+      amount.value = 10; amountSlider.value = 10;
+      steps.value = 3; stepsSlider.value = 3;
+      compute();
+    });
+  </script>
+</body>
+</html>
